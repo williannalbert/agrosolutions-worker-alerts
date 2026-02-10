@@ -6,7 +6,7 @@ using AgroSolutions.Alerts.Domain.Specifications;
 
 namespace AgroSolutions.Alerts.Application.Services;
 
-public class TelemetryProcessingService
+public class TelemetryProcessingService : ITelemetryProcessingService
 {
     private readonly ITelemetryParser _parser;
     private readonly ITelemetryRepository _repository;

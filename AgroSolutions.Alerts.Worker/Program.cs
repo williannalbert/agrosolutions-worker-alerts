@@ -3,6 +3,7 @@ using AgroSolutions.Alerts.Application.Services;
 using AgroSolutions.Alerts.Domain.Interfaces;
 using AgroSolutions.Alerts.Infrastructure.Adapters;
 using AgroSolutions.Alerts.Infrastructure.Data;
+using AgroSolutions.Alerts.Infrastructure.Messaging;
 using AgroSolutions.Alerts.Infrastructure.Repositories;
 using AgroSolutions.Alerts.Infrastructure.Services;
 using AgroSolutions.Alerts.Worker.Workers;
@@ -21,9 +22,11 @@ builder.Services.AddDbContext<AgroContext>(options =>
     options.UseNpgsql(connectionString);
 }, ServiceLifetime.Scoped); 
 
-builder.Services.AddTransient<TelemetryProcessingService>();
 builder.Services.AddTransient<ITelemetryParser, TelemetryJsonParser>();
 builder.Services.AddTransient<INotificationService, ConsoleNotificationService>();
+builder.Services.AddTransient<ITelemetryProcessingService, TelemetryProcessingService>();
+
+builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
 
 builder.Services.AddScoped<ITelemetryRepository, InMemoryTelemetryRepository>();
 
