@@ -23,6 +23,24 @@ services:
       - RABBITMQ_DEFAULT_PASS=guest
     networks:
       - agro-net
+      
+  # worker:
+    # build:
+      # context: .
+      # dockerfile: Dockerfile
+    # container_name: agro_worker
+    # environment:
+      # - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=agrodb;Username=admin;Password=admin
+      # - RabbitMq__HostName=rabbitmq
+      # - RabbitMq__UserName=guest
+      # - RabbitMq__Password=guest
+      # - RabbitMq__QueueName=sensor_readings_queue
+      # - HistoryApiUrl=http://host.docker.internal:5000 
+    # depends_on:
+      # - postgres
+      # - rabbitmq
+    # networks:
+      # - agro-net
 volumes:
   postgres_data:
 

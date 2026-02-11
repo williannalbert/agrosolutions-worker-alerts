@@ -5,5 +5,5 @@ namespace AgroSolutions.Alerts.Application.Interfaces;
 public interface IHistoryIntegrationService
 {
     Task RegisterReadingAsync(TelemetryReading reading);
-    Task<bool> HasHealthyMoistureInPeriodAsync(string deviceId, int hours);
+    Task<IEnumerable<TelemetryReading>> GetHistoryAsync(string deviceId, TimeSpan period);
 }

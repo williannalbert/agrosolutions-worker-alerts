@@ -3,6 +3,7 @@ using AgroSolutions.Alerts.Domain.Entities;
 using AgroSolutions.Alerts.Domain.Enums;
 using AgroSolutions.Alerts.Domain.Interfaces;
 using AgroSolutions.Alerts.Domain.Specifications;
+using AgroSolutions.Alerts.Domain.ValueObjects;
 
 namespace AgroSolutions.Alerts.Application.Services;
 
@@ -36,9 +37,13 @@ public class TelemetryProcessingService : ITelemetryProcessingService
 
             if (reading.SoilMoisture.HasValue && reading.SoilMoisture < 30)
             {
-                bool teveMomentoBom = await _historyService.HasHealthyMoistureInPeriodAsync(reading.DeviceId, 24);
+                bool persistiuOProblema = await CheckIfConditionPersisted(
+                    reading.DeviceId,
+                    TimeSpan.FromHours(24),
+                    r => r.SoilMoisture.HasValue && r.SoilMoisture < 30 
+                );
 
-                if (!teveMomentoBom)
+                if (!persistiuOProblema)
                 {
                     alerts.Add(new Alert(
                         reading.DeviceId,
@@ -52,12 +57,21 @@ public class TelemetryProcessingService : ITelemetryProcessingService
             var pestSpec = new PestRiskSpecification();
             if (pestSpec.IsSatisfiedBy(reading))
             {
-                alerts.Add(new Alert(
-                    reading.DeviceId,
-                    "RISCO DE PRAGA: Condições de calor e umidade alta.",
-                    AlertSeverity.Warning,
-                    "Risco de Praga"
-                ));
+                bool persistiuOProblema = await CheckIfConditionPersisted(
+                reading.DeviceId,
+                TimeSpan.FromHours(24),
+                r => pestSpec.IsSatisfiedBy(r) 
+            );
+
+                if (persistiuOProblema)
+                {
+                    alerts.Add(new Alert(
+                        reading.DeviceId,
+                        "RISCO DE PRAGA: Condições favoráveis persistentes por 24h.",
+                        AlertSeverity.Warning,
+                        "Aplicação Preventiva"
+                    ));
+                }
             }
 
             var rainSpec = new HeavyRainSpecification();
@@ -70,7 +84,7 @@ public class TelemetryProcessingService : ITelemetryProcessingService
                     "Monitoramento"
                 ));
             }
-
+            // TODO: Verificar se já não enviamos esse alerta hoje para não fazer SPAM
             foreach (var alert in alerts)
             {
                 await _repository.SaveAlertAsync(alert);
@@ -81,5 +95,16 @@ public class TelemetryProcessingService : ITelemetryProcessingService
         {
             Console.WriteLine($"Erro ao processar mensagem: {ex.Message}");
         }
+    }
+
+    private async Task<bool> CheckIfConditionPersisted(string deviceId, TimeSpan duration, Func<TelemetryReading, bool> isBadCondition)
+    {
+        var history = await _historyService.GetHistoryAsync(deviceId, duration);
+
+        if (history == null || !history.Any()) return false;
+
+        bool teveMomentoSaudavel = history.Any(r => !isBadCondition(r));
+
+        return !teveMomentoSaudavel;
     }
 }
