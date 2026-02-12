@@ -2,12 +2,10 @@
 
 namespace AgroSolutions.Alerts.Domain.Specifications;
 
-public class PestRiskSpecification : ISpecification<TelemetryReading>
+public class PestRiskSpecification : ISpecification<WeatherReading>
 {
-    public bool IsSatisfiedBy(TelemetryReading reading)
+    public bool IsSatisfiedBy(WeatherReading reading)
     {
-        if (!reading.Temperature.HasValue || !reading.Humidity.HasValue) return false;
-
-        return reading.Temperature.Value > 28.0 && reading.Humidity.Value > 80.0;
+        return reading.Temperature > 28.0 && reading.Humidity > 80.0;
     }
 }

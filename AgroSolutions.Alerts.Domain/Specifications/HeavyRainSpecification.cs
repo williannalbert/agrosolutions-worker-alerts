@@ -2,12 +2,10 @@
 
 namespace AgroSolutions.Alerts.Domain.Specifications;
 
-public class HeavyRainSpecification : ISpecification<TelemetryReading>
+public class HeavyRainSpecification : ISpecification<WeatherReading>
 {
-    public bool IsSatisfiedBy(TelemetryReading reading)
+    public bool IsSatisfiedBy(WeatherReading reading)
     {
-        if (!reading.RainVolume.HasValue) return false;
-
-        return reading.RainVolume.Value > 50.0;
+        return reading.RainVolume > 50.0;
     }
 }

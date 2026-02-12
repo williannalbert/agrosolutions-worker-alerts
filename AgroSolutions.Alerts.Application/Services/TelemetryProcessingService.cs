@@ -104,10 +104,12 @@ public class TelemetryProcessingService : ITelemetryProcessingService
         {
             _logger.LogDebug("Umidade baixa ({Moisture}%). Verificando histórico...", soil.SoilMoisture);
 
+            var droughtSpec = new DroughtRiskSpecification();
+
             bool persistiu = await CheckIfConditionPersisted(
                 soil.DeviceId,
                 TimeSpan.FromHours(24),
-                r => (r is SoilReading s && s.SoilMoisture < 30) || (r is TelemetryReading t && GetMoistureSafe(t) < 30)
+                r => r is SoilReading s && droughtSpec.IsSatisfiedBy(s)
             );
 
             if (persistiu)
@@ -125,6 +127,8 @@ public class TelemetryProcessingService : ITelemetryProcessingService
 
     private async Task ProcessWeatherLogic(WeatherReading weather, List<Alert> alerts)
     {
+        var pestSpec = new PestRiskSpecification();
+
         if (weather.RainVolume > 50)
         {
             alerts.Add(new Alert(weather.DeviceId, $"CHUVA FORTE: {weather.RainVolume}mm.", AlertSeverity.Info, "Monitorar"));

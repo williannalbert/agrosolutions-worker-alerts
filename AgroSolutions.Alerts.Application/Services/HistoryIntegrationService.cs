@@ -98,14 +98,37 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 var data = item["data"];
                 if (data == null) continue;
 
-                history.Add(new TelemetryReading(
-                    DeviceId: item["sensorId"]?.ToString() ?? deviceId, 
-                    Timestamp: item["timestamp"]?.GetValue<DateTime>() ?? DateTime.UtcNow,
-                    SoilMoisture: data["soilMoisturePercent"]?.GetValue<double>(), 
-                    Temperature: data["tempCelsius"]?.GetValue<double>() ?? data["internalTempCelsius"]?.GetValue<double>(),
-                    Humidity: data["humidityPercent"]?.GetValue<double>(),
-                    RainVolume: data["rainMmLastHour"]?.GetValue<double>()
-                ));
+                string id = item["sensorId"]?.ToString() ?? deviceId;
+                DateTime time = item["timestamp"]?.GetValue<DateTime>() ?? DateTime.UtcNow;
+
+                if (data["soilMoisturePercent"] != null)
+                {
+                    history.Add(new SoilReading(
+                        id, time,
+                        SoilMoisture: data["soilMoisturePercent"]?.GetValue<double>() ?? 0,
+                        SoilPh: data["soilPh"]?.GetValue<double>() ?? 0,
+                        Nutrients: null 
+                    ));
+                }
+                else if (data["rainMmLastHour"] != null || data["windSpeedKmh"] != null)
+                {
+                    history.Add(new WeatherReading(
+                        id, time,
+                        Temperature: data["tempCelsius"]?.GetValue<double>() ?? 0,
+                        Humidity: data["humidityPercent"]?.GetValue<double>() ?? 0,
+                        RainVolume: data["rainMmLastHour"]?.GetValue<double>() ?? 0,
+                        WindSpeed: data["windSpeedKmh"]?.GetValue<double>() ?? 0
+                    ));
+                }
+                else if (data["co2Ppm"] != null)
+                {
+                    history.Add(new SiloReading(
+                        id, time,
+                        FillLevel: data["fillLevelPercent"]?.GetValue<double>() ?? 0,
+                        Co2Level: data["co2Ppm"]?.GetValue<double>() ?? 0,
+                        InternalTemp: data["avgTempCelsius"]?.GetValue<double>() ?? 0
+                    ));
+                }
             }
             _logger.LogDebug("Histórico recuperado: {Count} registros.", history.Count);
             return history;
@@ -119,22 +142,33 @@ public class HistoryIntegrationService : IHistoryIntegrationService
 
     private object MapDataPayload(TelemetryReading r)
     {
-        if (r.RainVolume.HasValue || r.Temperature.HasValue && r.Humidity.HasValue)
+        return r switch
         {
-            return new WeatherDataDto(
-                TempCelsius: r.Temperature ?? 0,
-                HumidityPercent: r.Humidity ?? 0,
-                WindSpeedKmh: 0, 
-                WindDirection: "N/A",
-                RainMmLastHour: r.RainVolume ?? 0,
-                DewPoint: 0
-            );
-        }
+            SoilReading s => new SoilDataDto(
+                SoilMoisturePercent: s.SoilMoisture,
+                SoilPh: s.SoilPh,
+                Nutrients: new SoilNutrientsDto(
+                    s.Nutrients.Nitrogen,
+                    s.Nutrients.Phosphorus,
+                    s.Nutrients.Potassium)
+            ),
 
-        return new SoilDataDto(
-            SoilMoisturePercent: r.SoilMoisture ?? 0,
-            SoilPh: 6.5,
-            Nutrients: new SoilNutrientsDto(0, 0, 0)
-        );
+            WeatherReading w => new WeatherDataDto(
+                TempCelsius: w.Temperature,
+                HumidityPercent: w.Humidity,
+                WindSpeedKmh: w.WindSpeed,
+                WindDirection: "N/A",
+                RainMmLastHour: w.RainVolume,
+                DewPoint: 0
+            ),
+
+            SiloReading si => new SiloDataDto(
+                FillLevelPercent: si.FillLevel,
+                AvgTempCelsius: si.InternalTemp,
+                Co2Ppm: si.Co2Level
+            ),
+
+            _ => new { }
+        };
     }
 }
