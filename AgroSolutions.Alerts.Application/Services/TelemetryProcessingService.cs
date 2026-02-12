@@ -134,14 +134,17 @@ public class TelemetryProcessingService : ITelemetryProcessingService
             alerts.Add(new Alert(weather.DeviceId, $"CHUVA FORTE: {weather.RainVolume}mm.", AlertSeverity.Info, "Monitorar"));
         }
 
-        if (weather.Temperature > 28 && weather.Humidity > 80)
+        if (pestSpec.IsSatisfiedBy(weather))
         {
-            bool persistiu = await CheckIfConditionPersisted(weather.DeviceId, TimeSpan.FromHours(24),
-                r => GetTempSafe(r) > 28 && GetHumiditySafe(r) > 80);
+            bool persistiu = await CheckIfConditionPersisted(
+                weather.DeviceId,
+                TimeSpan.FromHours(24),
+                r => GetTempSafe(r) > 28 && GetHumiditySafe(r) > 80 
+            );
 
             if (persistiu)
             {
-                alerts.Add(new Alert(weather.DeviceId, "RISCO DE PRAGA: Condições favoráveis.", AlertSeverity.Warning, "Dedetizar"));
+                alerts.Add(new Alert(weather.DeviceId, "RISCO DE PRAGA: Condições favoráveis persistentes.", AlertSeverity.Warning, "Dedetizar"));
             }
         }
     }
@@ -160,7 +163,6 @@ public class TelemetryProcessingService : ITelemetryProcessingService
         if (history == null || !history.Any()) return false;
         return !history.Any(r => !isBadCondition(r)); 
     }
-    private double GetMoistureSafe(TelemetryReading r) => r is SoilReading s ? s.SoilMoisture : 100; 
     private double GetTempSafe(TelemetryReading r) => r is WeatherReading w ? w.Temperature : 0;
     private double GetHumiditySafe(TelemetryReading r) => r is WeatherReading w ? w.Humidity : 0;
 
