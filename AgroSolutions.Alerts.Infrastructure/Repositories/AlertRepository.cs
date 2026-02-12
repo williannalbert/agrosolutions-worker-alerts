@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AgroSolutions.Alerts.Infrastructure.Repositories;
 
-public class InMemoryTelemetryRepository : ITelemetryRepository
+public class AlertRepository : ITelemetryRepository
 {
     private readonly AgroContext _context;
 
-    public InMemoryTelemetryRepository(AgroContext context)
+    public AlertRepository(AgroContext context)
     {
         _context = context;
     }
@@ -18,5 +18,15 @@ public class InMemoryTelemetryRepository : ITelemetryRepository
     {
         _context.Alerts.Add(alert);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> ExistsRecentAlertAsync(string deviceId, string messageStart, TimeSpan period)
+    {
+        var cutoff = DateTime.UtcNow.Subtract(period);
+
+        return await _context.Alerts
+            .AnyAsync(a => a.DeviceId == deviceId
+                           && a.GeneratedAt >= cutoff
+                           && a.Message.StartsWith(messageStart));
     }
 }

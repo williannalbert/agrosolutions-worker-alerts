@@ -1,6 +1,7 @@
 ﻿using AgroSolutions.Alerts.Application.Interfaces;
 using AgroSolutions.Alerts.Domain.ValueObjects;
 using System.Text.Json.Nodes;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AgroSolutions.Alerts.Infrastructure.Adapters;
 
@@ -11,38 +12,54 @@ public class TelemetryJsonParser : ITelemetryParser
         var node = JsonNode.Parse(rawPayload);
         if (node == null) throw new ArgumentException("JSON inválido");
 
-        var dataNode = node["data"];
-        if (dataNode == null) throw new ArgumentException("JSON inválido: propriedade 'data' ausente.");
+        var data = node["data"];
+        if (data == null) throw new ArgumentException("JSON inválido: propriedade 'data' ausente.");
 
         string deviceId = node["sensor_id"]?.ToString() ?? "Unknown";
         DateTime timestamp = node["time_stamp"]?.GetValue<DateTime>() ?? DateTime.UtcNow;
-
         string? typeSensor = node["type_sensor"]?.ToString();
 
-        if (typeSensor == "solo" || dataNode["soil_moisture_percent"] != null)
+        return typeSensor switch
         {
-            return new TelemetryReading(
-                DeviceId: deviceId,
-                Timestamp: timestamp,
-                SoilMoisture: dataNode["soil_moisture_percent"]?.GetValue<double>(),
-                Temperature: null,
-                Humidity: null,
-                RainVolume: null
-            );
-        }
+            "solo" => ParseSoil(deviceId, timestamp, data),
+            "meteorologica" => ParseWeather(deviceId, timestamp, data),
+            "silo" => ParseSilo(deviceId, timestamp, data),
+            _ => throw new NotSupportedException($"Tipo de sensor desconhecido: {typeSensor}")
+        };
+    }
+    private SoilReading ParseSoil(string id, DateTime time, JsonNode data)
+    {
+        var nutrients = data["nutrients"];
+        return new SoilReading(
+            id, time,
+            SoilMoisture: data["soil_moisture_percent"]?.GetValue<double>() ?? 0,
+            SoilPh: data["soil_ph"]?.GetValue<double>() ?? 0,
+            Nutrients: new SoilNutrients(
+                Nitrogen: nutrients?["nitrogen_mg_kg"]?.GetValue<double>() ?? 0,
+                Phosphorus: nutrients?["phosphorus_mg_kg"]?.GetValue<double>() ?? 0,
+                Potassium: nutrients?["potassium_mg_kg"]?.GetValue<double>() ?? 0
+            )
+        );
+    }
 
-        if (typeSensor == "meteorologica" || dataNode["temp_celsius"] != null)
-        {
-            return new TelemetryReading(
-                DeviceId: deviceId,
-                Timestamp: timestamp,
-                SoilMoisture: null,
-                Temperature: dataNode["temp_celsius"]?.GetValue<double>(),
-                Humidity: dataNode["humidity_percent"]?.GetValue<double>(),
-                RainVolume: dataNode["rain_mm_last_hour"]?.GetValue<double>()
-            );
-        }
+    private WeatherReading ParseWeather(string id, DateTime time, JsonNode data)
+    {
+        return new WeatherReading(
+            id, time,
+            Temperature: data["temp_celsius"]?.GetValue<double>() ?? 0,
+            Humidity: data["humidity_percent"]?.GetValue<double>() ?? 0,
+            RainVolume: data["rain_mm_last_hour"]?.GetValue<double>() ?? 0,
+            WindSpeed: data["wind_speed_kmh"]?.GetValue<double>() ?? 0
+        );
+    }
 
-        throw new NotSupportedException($"Formato de sensor desconhecido ou tipo não suportado: {rawPayload}");
+    private SiloReading ParseSilo(string id, DateTime time, JsonNode data)
+    {
+        return new SiloReading(
+            id, time,
+            FillLevel: data["fill_level_percent"]?.GetValue<double>() ?? 0,
+            Co2Level: data["co2_ppm"]?.GetValue<double>() ?? 0,
+            InternalTemp: data["avg_temp_celsius"]?.GetValue<double>() ?? 0
+        );
     }
 }

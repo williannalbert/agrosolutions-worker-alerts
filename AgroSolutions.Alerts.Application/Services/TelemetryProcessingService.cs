@@ -4,6 +4,7 @@ using AgroSolutions.Alerts.Domain.Enums;
 using AgroSolutions.Alerts.Domain.Interfaces;
 using AgroSolutions.Alerts.Domain.Specifications;
 using AgroSolutions.Alerts.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace AgroSolutions.Alerts.Application.Services;
 
@@ -13,98 +14,150 @@ public class TelemetryProcessingService : ITelemetryProcessingService
     private readonly ITelemetryRepository _repository;
     private readonly IHistoryIntegrationService _historyService;
     private readonly INotificationService _notificationService;
+    private readonly ILogger<TelemetryProcessingService> _logger;
 
     public TelemetryProcessingService(
         ITelemetryParser parser,
         ITelemetryRepository repository,
         IHistoryIntegrationService historyService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        ILogger<TelemetryProcessingService> logger)
     {
         _parser = parser;
         _repository = repository;
         _historyService = historyService;
         _notificationService = notificationService;
+        _logger = logger;
     }
         
     public async Task ProcessMessageAsync(string rawJson)
     {
+        using var scope = _logger.BeginScope(new Dictionary<string, object> { ["ProcessingId"] = Guid.NewGuid() });
+
+        TelemetryReading? reading = null;
         try
         {
-            var reading = _parser.Parse(rawJson);
-            await _historyService.RegisterReadingAsync(reading);
+            _logger.LogDebug("Iniciando parse da mensagem. Tamanho: {Size}", rawJson.Length);
+
+            reading = _parser.Parse(rawJson);
+
+            _logger.LogInformation("Leitura recebida. Sensor: {DeviceId}, Data: {Timestamp}", reading.DeviceId, reading.Timestamp);
+            try
+            {
+                await _historyService.RegisterReadingAsync(reading);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao enviar histórico para API.");
+            }
 
             var alerts = new List<Alert>();
 
-            if (reading.SoilMoisture.HasValue && reading.SoilMoisture < 30)
+            var droughtSpec = new DroughtRiskSpecification();
+            switch (reading)
             {
-                bool persistiuOProblema = await CheckIfConditionPersisted(
-                    reading.DeviceId,
-                    TimeSpan.FromHours(24),
-                    r => r.SoilMoisture.HasValue && r.SoilMoisture < 30 
-                );
+                case SoilReading soil:
+                    await ProcessSoilLogic(soil, alerts);
+                    break;
 
-                if (!persistiuOProblema)
-                {
-                    alerts.Add(new Alert(
-                        reading.DeviceId,
-                        "ALERTA DE SECA: Umidade abaixo de 30% por mais de 24h.",
-                        AlertSeverity.Critical,
-                        "Alerta de Seca"
-                    ));
-                }
+                case WeatherReading weather:
+                    await ProcessWeatherLogic(weather, alerts);
+                    break;
+
+                case SiloReading silo:
+                    ProcessSiloLogic(silo, alerts);
+                    break;
+
+                default:
+                    _logger.LogWarning("Tipo de leitura não suportado para análise de alertas: {Type}", reading.GetType().Name);
+                    break;
             }
 
-            var pestSpec = new PestRiskSpecification();
-            if (pestSpec.IsSatisfiedBy(reading))
-            {
-                bool persistiuOProblema = await CheckIfConditionPersisted(
-                reading.DeviceId,
-                TimeSpan.FromHours(24),
-                r => pestSpec.IsSatisfiedBy(r) 
-            );
-
-                if (persistiuOProblema)
-                {
-                    alerts.Add(new Alert(
-                        reading.DeviceId,
-                        "RISCO DE PRAGA: Condições favoráveis persistentes por 24h.",
-                        AlertSeverity.Warning,
-                        "Aplicação Preventiva"
-                    ));
-                }
-            }
-
-            var rainSpec = new HeavyRainSpecification();
-            if (rainSpec.IsSatisfiedBy(reading))
-            {
-                alerts.Add(new Alert(
-                    reading.DeviceId,
-                    "CHUVA FORTE: Acumulado > 50mm.",
-                    AlertSeverity.Info,
-                    "Monitoramento"
-                ));
-            }
-            // TODO: Verificar se já não enviamos esse alerta hoje para não fazer SPAM
             foreach (var alert in alerts)
             {
-                await _repository.SaveAlertAsync(alert);
-                await _notificationService.NotifyAsync(alert);
+                var cooldown = alert.Severity == AlertSeverity.Critical ? TimeSpan.FromHours(1) : TimeSpan.FromHours(24);
+
+                bool jaNotificado = await _repository.ExistsRecentAlertAsync(alert.DeviceId, alert.Message.Substring(0, 10), cooldown);
+
+                if (!jaNotificado)
+                {
+                    await _repository.SaveAlertAsync(alert);
+                    _logger.LogInformation("Alerta {AlertId} salvo e notificado.", alert.Id);
+                    await _notificationService.NotifyAsync(alert);
+                }
+                else
+                {
+                    _logger.LogInformation("Alerta suprimido (Anti-Spam): {Message}", alert.Message);
+                }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao processar mensagem: {ex.Message}");
+            _logger.LogError(ex, "Erro fatal no processamento. Payload: {Payload}", rawJson);
+            throw;
         }
     }
 
+    private async Task ProcessSoilLogic(SoilReading soil, List<Alert> alerts)
+    {
+        if (soil.SoilMoisture < 30)
+        {
+            _logger.LogDebug("Umidade baixa ({Moisture}%). Verificando histórico...", soil.SoilMoisture);
+
+            bool persistiu = await CheckIfConditionPersisted(
+                soil.DeviceId,
+                TimeSpan.FromHours(24),
+                r => (r is SoilReading s && s.SoilMoisture < 30) || (r is TelemetryReading t && GetMoistureSafe(t) < 30)
+            );
+
+            if (persistiu)
+            {
+                _logger.LogWarning("ALERTA CONFIRMADO: Seca persistente.");
+                alerts.Add(new Alert(soil.DeviceId, "ALERTA DE SECA: Umidade < 30% por 24h.", AlertSeverity.Critical, "Irrigação"));
+            }
+        }
+
+        if (soil.SoilPh < 5.0 || soil.SoilPh > 8.0)
+        {
+            alerts.Add(new Alert(soil.DeviceId, $"SAÚDE DO SOLO: pH anormal ({soil.SoilPh}).", AlertSeverity.Warning, "Correção"));
+        }
+    }
+
+    private async Task ProcessWeatherLogic(WeatherReading weather, List<Alert> alerts)
+    {
+        if (weather.RainVolume > 50)
+        {
+            alerts.Add(new Alert(weather.DeviceId, $"CHUVA FORTE: {weather.RainVolume}mm.", AlertSeverity.Info, "Monitorar"));
+        }
+
+        if (weather.Temperature > 28 && weather.Humidity > 80)
+        {
+            bool persistiu = await CheckIfConditionPersisted(weather.DeviceId, TimeSpan.FromHours(24),
+                r => GetTempSafe(r) > 28 && GetHumiditySafe(r) > 80);
+
+            if (persistiu)
+            {
+                alerts.Add(new Alert(weather.DeviceId, "RISCO DE PRAGA: Condições favoráveis.", AlertSeverity.Warning, "Dedetizar"));
+            }
+        }
+    }
+
+    private void ProcessSiloLogic(SiloReading silo, List<Alert> alerts)
+    {
+        if (silo.Co2Level > 3000)
+        {
+            _logger.LogCritical("PERIGO NO SILO: CO2 {Co2}ppm.", silo.Co2Level);
+            alerts.Add(new Alert(silo.DeviceId, $"PERIGO SILO: CO2 Alto ({silo.Co2Level}ppm).", AlertSeverity.Critical, "EVACUAR"));
+        }
+    }
     private async Task<bool> CheckIfConditionPersisted(string deviceId, TimeSpan duration, Func<TelemetryReading, bool> isBadCondition)
     {
         var history = await _historyService.GetHistoryAsync(deviceId, duration);
-
         if (history == null || !history.Any()) return false;
-
-        bool teveMomentoSaudavel = history.Any(r => !isBadCondition(r));
-
-        return !teveMomentoSaudavel;
+        return !history.Any(r => !isBadCondition(r)); 
     }
+    private double GetMoistureSafe(TelemetryReading r) => r is SoilReading s ? s.SoilMoisture : 100; 
+    private double GetTempSafe(TelemetryReading r) => r is WeatherReading w ? w.Temperature : 0;
+    private double GetHumiditySafe(TelemetryReading r) => r is WeatherReading w ? w.Humidity : 0;
+
 }

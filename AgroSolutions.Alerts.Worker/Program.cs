@@ -28,7 +28,7 @@ builder.Services.AddTransient<ITelemetryProcessingService, TelemetryProcessingSe
 
 builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
 
-builder.Services.AddScoped<ITelemetryRepository, InMemoryTelemetryRepository>();
+builder.Services.AddScoped<ITelemetryRepository, AlertRepository>();
 
 builder.Services.AddHttpClient<IHistoryIntegrationService, HistoryIntegrationService>(client =>
 {
