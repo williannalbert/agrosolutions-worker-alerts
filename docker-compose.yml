@@ -12,17 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: agro_rabbitmq
-    ports:
-      - "5672:5672"   
-      - "15672:15672" 
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    networks:
-      - agro-net
       
   # worker:
     # build:
@@ -31,16 +20,11 @@ services:
     # container_name: agro_worker
     # environment:
       # - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=agrodb;Username=admin;Password=admin
-      # - RabbitMq__HostName=rabbitmq
-      # - RabbitMq__UserName=guest
-      # - RabbitMq__Password=guest
-      # - RabbitMq__QueueName=sensor_readings_queue
-      # - HistoryApiUrl=http://host.docker.internal:5000 
-    # depends_on:
-      # - postgres
-      # - rabbitmq
-    # networks:
-      # - agro-net
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=SUA_ACCESS_KEY
+      # - AWS_SECRET_ACCESS_KEY=SUA_SECRET_KEY
+      # - AwsSettings__QueueUrl=https://sqs.us-east-1.amazonaws.com/....
+      # - HistoryApiUrl=http://host.docker.internal:5000
 volumes:
   postgres_data:
 

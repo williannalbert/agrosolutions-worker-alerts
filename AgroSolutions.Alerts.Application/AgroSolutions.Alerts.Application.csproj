@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="UseCases\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\AgroSolutions.Alerts.Domain\AgroSolutions.Alerts.Domain.csproj" />
   </ItemGroup>
 

@@ -7,6 +7,7 @@ using AgroSolutions.Alerts.Infrastructure.Messaging;
 using AgroSolutions.Alerts.Infrastructure.Repositories;
 using AgroSolutions.Alerts.Infrastructure.Services;
 using AgroSolutions.Alerts.Worker.Workers;
+using Amazon.SQS;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,9 @@ builder.Services.AddTransient<ITelemetryParser, TelemetryJsonParser>();
 builder.Services.AddTransient<INotificationService, ConsoleNotificationService>();
 builder.Services.AddTransient<ITelemetryProcessingService, TelemetryProcessingService>();
 
-builder.Services.AddSingleton<IMessageConsumer, RabbitMqConsumer>();
+var awsOptions = builder.Configuration.GetAWSOptions();
+builder.Services.AddDefaultAWSOptions(awsOptions);
+builder.Services.AddAWSService<IAmazonSQS>();
 
 builder.Services.AddScoped<ITelemetryRepository, AlertRepository>();
 

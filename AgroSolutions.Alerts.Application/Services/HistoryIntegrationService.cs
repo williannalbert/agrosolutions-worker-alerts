@@ -39,8 +39,8 @@ public class HistoryIntegrationService : IHistoryIntegrationService
         };
 
         var dto = new CreateReadingDto(
-            FieldId: Guid.NewGuid(), // TODO: Ajustar conforme necessidade
-            SensorId: Guid.TryParse(reading.DeviceId, out var id) ? id : Guid.NewGuid(),
+            FieldId: reading.FieldId,
+            SensorId: Guid.Parse(reading.DeviceId),
             TypeSensor: typeSensor,
             TimeStamp: reading.Timestamp,
             Data: payloadData
@@ -100,11 +100,12 @@ public class HistoryIntegrationService : IHistoryIntegrationService
 
                 string id = item["sensorId"]?.ToString() ?? deviceId;
                 DateTime time = item["timestamp"]?.GetValue<DateTime>() ?? DateTime.UtcNow;
+                Guid fieldId = item["fieldId"]?.GetValue<Guid>() ?? Guid.Empty;
 
                 if (data["soilMoisturePercent"] != null)
                 {
                     history.Add(new SoilReading(
-                        id, time,
+                        id, time, fieldId,
                         SoilMoisture: data["soilMoisturePercent"]?.GetValue<double>() ?? 0,
                         SoilPh: data["soilPh"]?.GetValue<double>() ?? 0,
                         Nutrients: null 
@@ -113,7 +114,7 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 else if (data["rainMmLastHour"] != null || data["windSpeedKmh"] != null)
                 {
                     history.Add(new WeatherReading(
-                        id, time,
+                        id, time, fieldId,
                         Temperature: data["tempCelsius"]?.GetValue<double>() ?? 0,
                         Humidity: data["humidityPercent"]?.GetValue<double>() ?? 0,
                         RainVolume: data["rainMmLastHour"]?.GetValue<double>() ?? 0,
@@ -123,7 +124,7 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 else if (data["co2Ppm"] != null)
                 {
                     history.Add(new SiloReading(
-                        id, time,
+                        id, time, fieldId,
                         FillLevel: data["fillLevelPercent"]?.GetValue<double>() ?? 0,
                         Co2Level: data["co2Ppm"]?.GetValue<double>() ?? 0,
                         InternalTemp: data["avgTempCelsius"]?.GetValue<double>() ?? 0
