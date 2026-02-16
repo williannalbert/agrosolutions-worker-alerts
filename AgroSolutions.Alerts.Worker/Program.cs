@@ -24,7 +24,7 @@ builder.Services.AddDbContext<AgroContext>(options =>
 }, ServiceLifetime.Scoped); 
 
 builder.Services.AddTransient<ITelemetryParser, TelemetryJsonParser>();
-builder.Services.AddTransient<INotificationService, ConsoleNotificationService>();
+builder.Services.AddTransient<INotificationService, AwsSqsEmailService>(); 
 builder.Services.AddTransient<ITelemetryProcessingService, TelemetryProcessingService>();
 
 var awsOptions = builder.Configuration.GetAWSOptions();
