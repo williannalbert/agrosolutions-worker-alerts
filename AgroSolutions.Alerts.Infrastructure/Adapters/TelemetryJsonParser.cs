@@ -83,7 +83,9 @@ public class TelemetryJsonParser : ITelemetryParser
             Temperature: data["temperatura"]?.GetValue<double>() ?? 0,
             Humidity: data["umidade"]?.GetValue<double>() ?? 0,
             RainVolume: data["chuvaUltimaHora"]?.GetValue<double>() ?? 0,
-            WindSpeed: data["velocidadeVento"]?.GetValue<double>() ?? 0
+            WindSpeed: data["velocidadeVento"]?.GetValue<double>() ?? 0,
+            WindDirection: data["direcaoVento"]?.ToString() ?? "N/A",
+            DewPoint: data["pontoOrvalho"]?.GetValue<double>() ?? 0
         );
     }
 

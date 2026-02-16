@@ -118,8 +118,9 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                         Temperature: data["tempCelsius"]?.GetValue<double>() ?? 0,
                         Humidity: data["humidityPercent"]?.GetValue<double>() ?? 0,
                         RainVolume: data["rainMmLastHour"]?.GetValue<double>() ?? 0,
-                        WindSpeed: data["windSpeedKmh"]?.GetValue<double>() ?? 0
-                    ));
+                        WindSpeed: data["windSpeedKmh"]?.GetValue<double>() ?? 0,
+                        WindDirection: data["windDirection"]?.ToString() ?? "N/A",
+                        DewPoint: data["dewPoint"]?.GetValue<double>() ?? 0));
                 }
                 else if (data["co2Ppm"] != null)
                 {
@@ -158,9 +159,9 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 TempCelsius: w.Temperature,
                 HumidityPercent: w.Humidity,
                 WindSpeedKmh: w.WindSpeed,
-                WindDirection: "N/A",
+                WindDirection: w.WindDirection, 
                 RainMmLastHour: w.RainVolume,
-                DewPoint: 0
+                DewPoint: w.DewPoint
             ),
 
             SiloReading si => new SiloDataDto(

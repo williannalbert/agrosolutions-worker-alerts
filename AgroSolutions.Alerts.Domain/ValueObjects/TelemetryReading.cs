@@ -24,7 +24,9 @@ public record WeatherReading(
     double Temperature,
     double Humidity,
     double RainVolume,
-    double WindSpeed
+    double WindSpeed,
+    string WindDirection,
+    double DewPoint
 ) : TelemetryReading(DeviceId, Timestamp, FieldId);
 
 public record SiloReading(
