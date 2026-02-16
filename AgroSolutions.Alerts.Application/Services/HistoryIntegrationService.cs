@@ -105,7 +105,7 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 if (data["soilMoisturePercent"] != null)
                 {
                     history.Add(new SoilReading(
-                        id, time, fieldId,
+                        id, time, fieldId, Email: "",
                         SoilMoisture: data["soilMoisturePercent"]?.GetValue<double>() ?? 0,
                         SoilPh: data["soilPh"]?.GetValue<double>() ?? 0,
                         Nutrients: null 
@@ -114,7 +114,7 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 else if (data["rainMmLastHour"] != null || data["windSpeedKmh"] != null)
                 {
                     history.Add(new WeatherReading(
-                        id, time, fieldId,
+                        id, time, fieldId, Email: "",
                         Temperature: data["tempCelsius"]?.GetValue<double>() ?? 0,
                         Humidity: data["humidityPercent"]?.GetValue<double>() ?? 0,
                         RainVolume: data["rainMmLastHour"]?.GetValue<double>() ?? 0,
@@ -125,7 +125,7 @@ public class HistoryIntegrationService : IHistoryIntegrationService
                 else if (data["co2Ppm"] != null)
                 {
                     history.Add(new SiloReading(
-                        id, time, fieldId,
+                        id, time, fieldId, Email: "",
                         FillLevel: data["fillLevelPercent"]?.GetValue<double>() ?? 0,
                         Co2Level: data["co2Ppm"]?.GetValue<double>() ?? 0,
                         InternalTemp: data["avgTempCelsius"]?.GetValue<double>() ?? 0

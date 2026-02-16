@@ -115,13 +115,13 @@ public class TelemetryProcessingService : ITelemetryProcessingService
             if (persistiu)
             {
                 _logger.LogWarning("ALERTA CONFIRMADO: Seca persistente.");
-                alerts.Add(new Alert(soil.DeviceId, "ALERTA DE SECA: Umidade < 30% por 24h.", AlertSeverity.Critical, "Irrigação"));
+                alerts.Add(new Alert(soil.DeviceId, "ALERTA DE SECA: Umidade < 30% por 24h.", AlertSeverity.Critical, "Irrigação", soil.Email));
             }
         }
 
         if (soil.SoilPh < 5.0 || soil.SoilPh > 8.0)
         {
-            alerts.Add(new Alert(soil.DeviceId, $"SAÚDE DO SOLO: pH anormal ({soil.SoilPh}).", AlertSeverity.Warning, "Correção"));
+            alerts.Add(new Alert(soil.DeviceId, $"SAÚDE DO SOLO: pH anormal ({soil.SoilPh}).", AlertSeverity.Warning, "Correção", soil.Email));
         }
     }
 
@@ -131,7 +131,7 @@ public class TelemetryProcessingService : ITelemetryProcessingService
 
         if (weather.RainVolume > 50)
         {
-            alerts.Add(new Alert(weather.DeviceId, $"CHUVA FORTE: {weather.RainVolume}mm.", AlertSeverity.Info, "Monitorar"));
+            alerts.Add(new Alert(weather.DeviceId, $"CHUVA FORTE: {weather.RainVolume}mm.", AlertSeverity.Info, "Monitorar", weather.Email));
         }
 
         if (pestSpec.IsSatisfiedBy(weather))
@@ -144,7 +144,7 @@ public class TelemetryProcessingService : ITelemetryProcessingService
 
             if (persistiu)
             {
-                alerts.Add(new Alert(weather.DeviceId, "RISCO DE PRAGA: Condições favoráveis persistentes.", AlertSeverity.Warning, "Dedetizar"));
+                alerts.Add(new Alert(weather.DeviceId, "RISCO DE PRAGA: Condições favoráveis persistentes.", AlertSeverity.Warning, "Dedetizar", weather.Email));
             }
         }
     }
@@ -154,7 +154,7 @@ public class TelemetryProcessingService : ITelemetryProcessingService
         if (silo.Co2Level > 3000)
         {
             _logger.LogCritical("PERIGO NO SILO: CO2 {Co2}ppm.", silo.Co2Level);
-            alerts.Add(new Alert(silo.DeviceId, $"PERIGO SILO: CO2 Alto ({silo.Co2Level}ppm).", AlertSeverity.Critical, "EVACUAR"));
+            alerts.Add(new Alert(silo.DeviceId, $"PERIGO SILO: CO2 Alto ({silo.Co2Level}ppm).", AlertSeverity.Critical, "EVACUAR", silo.Email));
         }
     }
     private async Task<bool> CheckIfConditionPersisted(string deviceId, TimeSpan duration, Func<TelemetryReading, bool> isBadCondition)

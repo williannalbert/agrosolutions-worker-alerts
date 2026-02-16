@@ -34,7 +34,7 @@ public class AwsSqsEmailService : INotificationService
     {
         var emailPayload = new SendEmailEventDto
         {
-            To = "email.email@gmail.com", 
+            To = alert.RecipientEmail,
             Subject = $"[{alert.Severity.ToString().ToUpper()}] Alerta AgroSolutions: {alert.DeviceId}",
             HtmlBody = BuildHtmlBody(alert),
             TextBody = $"Alerta: {alert.Message}. Ação: {alert.SuggestedFieldStatus}"

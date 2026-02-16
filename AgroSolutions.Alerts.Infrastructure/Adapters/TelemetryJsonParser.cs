@@ -15,6 +15,7 @@ public class TelemetryJsonParser : ITelemetryParser
         var fieldId = node["fieldId"]?.GetValue<Guid>() ?? Guid.Empty;
         string deviceId = node["sensorId"]?.ToString() ?? "Unknown";
         DateTime timestamp = node["timeStamp"]?.GetValue<DateTime>() ?? DateTime.UtcNow;
+        string email = node["email"]?.ToString() ?? "admin@agrosolutions.com";
 
         var typeSensorRaw = node["typeSensor"]?.ToString();
         var data = node["data"];
@@ -25,9 +26,9 @@ public class TelemetryJsonParser : ITelemetryParser
 
         return typeSensor switch
         {
-            "solo" => ParseSoil(deviceId, timestamp, fieldId, data),
-            "meteorologica" => ParseWeather(deviceId, timestamp, fieldId, data),
-            "silo" => ParseSilo(deviceId, timestamp, fieldId, data),
+            "solo" => ParseSoil(deviceId, timestamp, fieldId, email, data),
+            "meteorologica" => ParseWeather(deviceId, timestamp, fieldId, email, data),
+            "silo" => ParseSilo(deviceId, timestamp, fieldId, email, data),
             _ => throw new NotSupportedException($"Tipo de sensor desconhecido ou não suportado: {typeSensorRaw}")
         };
     }
@@ -56,7 +57,7 @@ public class TelemetryJsonParser : ITelemetryParser
         return normalized;
     }
 
-    private SoilReading ParseSoil(string id, DateTime time, Guid fieldId, JsonNode data)
+    private SoilReading ParseSoil(string id, DateTime time, Guid fieldId, string email, JsonNode data)
     {
         var nutrientesNode = data["nutrientesData"]; 
 
@@ -64,6 +65,7 @@ public class TelemetryJsonParser : ITelemetryParser
             DeviceId: id,
             Timestamp: time,
             FieldId: fieldId,
+            Email: email,
             SoilMoisture: data["umidade"]?.GetValue<double>() ?? 0,
             SoilPh: data["ph"]?.GetValue<double>() ?? 0,
             Nutrients: new SoilNutrients(
@@ -74,12 +76,13 @@ public class TelemetryJsonParser : ITelemetryParser
         );
     }
 
-    private WeatherReading ParseWeather(string id, DateTime time, Guid fieldId, JsonNode data)
+    private WeatherReading ParseWeather(string id, DateTime time, Guid fieldId, string email, JsonNode data)
     {
         return new WeatherReading(
             DeviceId: id,
             Timestamp: time,
             FieldId: fieldId,
+            Email: email,
             Temperature: data["temperatura"]?.GetValue<double>() ?? 0,
             Humidity: data["umidade"]?.GetValue<double>() ?? 0,
             RainVolume: data["chuvaUltimaHora"]?.GetValue<double>() ?? 0,
@@ -89,12 +92,13 @@ public class TelemetryJsonParser : ITelemetryParser
         );
     }
 
-    private SiloReading ParseSilo(string id, DateTime time, Guid fieldId, JsonNode data)
+    private SiloReading ParseSilo(string id, DateTime time, Guid fieldId, string email, JsonNode data)
     {
         return new SiloReading(
             DeviceId: id,
             Timestamp: time,
             FieldId: fieldId,
+            Email: email,
             FillLevel: data["nivelPreenchimento"]?.GetValue<double>() ?? 0,
             Co2Level: data["co2"]?.GetValue<double>() ?? 0,
             InternalTemp: data["temperaturaMedia"]?.GetValue<double>() ?? 0
