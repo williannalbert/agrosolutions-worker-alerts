@@ -31,7 +31,9 @@ var awsOptions = builder.Configuration.GetAWSOptions();
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonSQS>();
 
+
 builder.Services.AddScoped<ITelemetryRepository, AlertRepository>();
+builder.Services.AddSingleton<IMessageConsumer, AwsSqsConsumer>();
 
 builder.Services.AddHttpClient<IHistoryIntegrationService, HistoryIntegrationService>(client =>
 {

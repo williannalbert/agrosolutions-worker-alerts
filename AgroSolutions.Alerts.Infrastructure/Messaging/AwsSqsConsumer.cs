@@ -54,7 +54,8 @@ public class AwsSqsConsumer : IMessageConsumer
 
                 var response = await _sqsClient.ReceiveMessageAsync(request, cancellationToken);
 
-                if (response.Messages.Count == 0) continue;
+                if ((response?.Messages?.Count ?? 0) == 0)
+                    continue;
 
                 foreach (var message in response.Messages)
                 {
