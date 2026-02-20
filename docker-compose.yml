@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: agro_postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=agrodb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - agro-net
+      
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agro_worker
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=agrodb;Username=admin;Password=admin
+      
+      - AWS_REGION=sa-east-1
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
+      
+      - AwsSettings__QueueUrl=https://sqs.sa-east-1.amazonaws.com/405114419969/sensor-raw-queue
+      - AwsSettings__EmailQueueUrl=https://sqs.sa-east-1.amazonaws.com/405114419969/agrosolutions-email-queue
+      - AwsSettings__WaitTimeSeconds=20
+      - AwsSettings__MaxMessages=10
+      
+      - HistoryApiUrl=http://host.docker.internal:5000
+    depends_on:
+      - postgres
+    networks:
+      - agro-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  postgres_data:
+
+networks:
+  agro-net:
+    driver: bridge
