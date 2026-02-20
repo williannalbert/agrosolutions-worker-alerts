@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alerts-worker
+  namespace: alerts-context
+  labels:
+    app: alerts-worker
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: alerts-worker
+  template:
+    metadata:
+      labels:
+        app: alerts-worker
+    spec:
+      containers:
+      - name: alerts-worker
+        image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG 
+        imagePullPolicy: Always
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          value: "$DB_CONNECTION_STRING"
+          
+        - name: HistoryApiUrl
+          value: "http://history-service.history-context.svc.cluster.local"
+          
+        - name: AWS_REGION
+          value: "sa-east-1"
+        - name: AWS_ACCESS_KEY_ID
+          value: "$AWS_ACCESS_KEY_ID"
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "$AWS_SECRET_ACCESS_KEY"
+          
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
