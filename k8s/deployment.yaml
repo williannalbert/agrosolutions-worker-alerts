@@ -38,6 +38,8 @@ spec:
           value: "worker-alerts-client"
         - name: Keycloak__ClientSecret
           value: "$KEYCLOAK_CLIENT_SECRET"
+        - name: AwsSettings__QueueUrl
+          value: "https://sqs.sa-east-1.amazonaws.com/316295889438/agrosolutions-telemetry-queue"
           
         resources:
           requests:
