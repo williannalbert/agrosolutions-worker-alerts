@@ -2,6 +2,7 @@
 using AgroSolutions.Alerts.Application.Services;
 using AgroSolutions.Alerts.Domain.Interfaces;
 using AgroSolutions.Alerts.Infrastructure.Adapters;
+using AgroSolutions.Alerts.Infrastructure.Auth;
 using AgroSolutions.Alerts.Infrastructure.Data;
 using AgroSolutions.Alerts.Infrastructure.Messaging;
 using AgroSolutions.Alerts.Infrastructure.Repositories;
@@ -35,11 +36,16 @@ builder.Services.AddAWSService<IAmazonSQS>();
 builder.Services.AddScoped<ITelemetryRepository, AlertRepository>();
 builder.Services.AddSingleton<IMessageConsumer, AwsSqsConsumer>();
 
+builder.Services.AddHttpClient();
+builder.Services.AddTransient<KeycloakAuthHandler>();
+
 builder.Services.AddHttpClient<IHistoryIntegrationService, HistoryIntegrationService>(client =>
 {
     client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("HistoryApiUrl") ?? "http://localhost:5000");
 })
+.AddHttpMessageHandler<KeycloakAuthHandler>()
 .AddPolicyHandler(GetRetryPolicy());
+
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();

@@ -32,6 +32,12 @@ spec:
           value: "$AWS_ACCESS_KEY_ID"
         - name: AWS_SECRET_ACCESS_KEY
           value: "$AWS_SECRET_ACCESS_KEY"
+        - name: Keycloak__TokenUrl
+          value: "$KEYCLOAK_TOKEN_URL"
+        - name: Keycloak__ClientId
+          value: "worker-alerts-client"
+        - name: Keycloak__ClientSecret
+          value: "$KEYCLOAK_CLIENT_SECRET"
           
         resources:
           requests:
